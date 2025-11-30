@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>國小英語全方位學習系統 (優化版)</title>
+    <title>國小英語全方位學習系統 (旗艦版)</title>
     
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
@@ -12,7 +12,60 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     
-    <link rel="stylesheet" href="styles.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Fredoka:wght@400;600&family=Varela+Round&display=swap');
+
+        body { 
+            font-family: 'Noto Sans TC', sans-serif; 
+            background: linear-gradient(135deg, #e0f7fa 0%, #e3f2fd 100%);
+            min-height: 100vh;
+            -webkit-tap-highlight-color: transparent; 
+            overflow-x: hidden;
+        }
+
+        .english-font { font-family: 'Fredoka', sans-serif; letter-spacing: 1px; }
+        .number-font { font-family: 'Varela Round', sans-serif; }
+
+        /* --- 卡片翻轉核心 --- */
+        .card-perspective { perspective: 1200px; }
+        .card-inner { 
+            transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
+            transform-style: preserve-3d; 
+            position: relative; width: 100%; height: 100%; 
+        }
+        .flipped .card-inner { transform: rotateY(180deg); }
+        .card-front, .card-back { 
+            position: absolute; width: 100%; height: 100%; 
+            backface-visibility: hidden; -webkit-backface-visibility: hidden;
+            border-radius: 3rem; overflow: hidden; top: 0; left: 0;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1), 0 4px 8px rgba(0,0,0,0.05);
+        }
+        .card-front { z-index: 2; transform: rotateY(0deg); background: linear-gradient(to bottom right, #ffffff, #f8fafc); }
+        .card-back { transform: rotateY(180deg); z-index: 1; background: linear-gradient(to bottom right, #ffffff, #f0fff4); }
+
+        /* --- 玻璃擬態容器 --- */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
+        }
+
+        /* --- 互動特效 --- */
+        .btn-bounce { transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); cursor: pointer; }
+        .btn-bounce:active { transform: scale(0.96); }
+        .btn-bounce:hover { transform: translateY(-2px); filter: brightness(1.05); }
+
+        /* --- 動畫 --- */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
+    </style>
 </head>
 <body>
     <div id="root"></div>
@@ -21,11 +74,7 @@
         const { useState, useEffect, useMemo, useRef } = React;
 
         // ==========================================
-        // 1. 資料處理與設定
-        // ==========================================
-        
-        // ==========================================
-        // 1. 完整資料庫 (1000+ 單字)
+        // 1. 資料庫 (完整 1000+ 單字)
         // ==========================================
         const DEFAULT_RAW_DATA = [
             // 二年級上學期
@@ -52,8 +101,6 @@
             [2,1,99,"yes","是的"],[2,1,100,"afternoon","下午"],[2,1,101,"also","也,還,同樣地"],[2,1,102,"apple","蘋果"],[2,1,103,"arm","手臂"],
             [2,1,104,"bad","壞的,不好的"],[2,1,105,"ball","球"],[2,1,106,"bean","豆,豆莢,豆的果實"],[2,1,107,"bed","床"],[2,1,108,"big","大的,重大的"],
             [2,1,109,"bird","鳥"],[2,1,110,"box","箱;盒"],[2,1,111,"brother","兄弟,伙伴,朋友"],[2,1,112,"bun","圓麵包,小圓甜餅"],
-            
-            // 二年級下學期
             [2,2,1,"airport","飛機場"],[2,2,2,"aunt","姑姑"],[2,2,3,"bakery","麵包店"],[2,2,4,"bell","鐘聲,鈴聲,鳴鐘"],[2,2,5,"block","積木,街區"],
             [2,2,6,"board","木板,牌子"],[2,2,7,"bow","弓,鞠躬"],[2,2,8,"bridge","橋樑,鼻樑,架橋"],[2,2,9,"brush","刷,刷子"],[2,2,10,"cage","籠子,關在籠中"],
             [2,2,11,"card","卡片,紙牌"],[2,2,12,"castle","城堡"],[2,2,13,"chicken","雞"],[2,2,14,"classroom","教室"],[2,2,15,"comic","漫畫,喜劇,滑稽的"],
@@ -77,8 +124,6 @@
             [2,2,101,"am","是"],[2,2,102,"are","是(用於複數)"],[2,2,103,"at","在..地點,在..方面,向、對著"],[2,2,104,"bag","袋:提袋"],[2,2,105,"banana","香蕉"],
             [2,2,106,"bee","蜜蜂,蜂"],[2,2,107,"bingo","賓果遊戲,答對了"],[2,2,108,"boat","小船"],[2,2,109,"book","書本,書籍"],[2,2,110,"bread","麵包"],
             [2,2,111,"bug","蟲子"],
-
-            // 三年級上學期
             [3,1,1,"agree","同意,贊成"],[3,1,2,"along","沿著,順著,向前"],[3,1,3,"ax","斧頭"],[3,1,4,"bench","長凳:長椅"],[3,1,5,"black","黑色,黑色的,黑人"],
             [3,1,6,"blue","藍色的"],[3,1,7,"bright","明亮的;發亮的"],[3,1,8,"cap","無邊帽子"],[3,1,9,"carry","挑,抱,背,提,攜帶,運送東西"],[3,1,10,"chalk","粉筆"],
             [3,1,11,"cheer","歡呼,喝采,鼓勵,乾杯"],[3,1,12,"clock","時鐘"],[3,1,13,"coat","外套,大衣"],[3,1,14,"comb","梳子,梳理,梳頭髮"],[3,1,15,"dark","黑暗的,黑皮膚的,邪惡的"],
@@ -102,8 +147,6 @@
             [3,1,101,"butterfly","蝴蝶"],[3,1,102,"can","能,會,可以,罐頭"],[3,1,103,"cat","貓咪"],[3,1,104,"chair","椅子"],[3,1,105,"clap","拍手,鼓掌"],
             [3,1,106,"cookie","點心,甜點"],[3,1,107,"cup","杯子,使(手掌)成杯狀"],[3,1,108,"dog","狗"],[3,1,109,"dot","點,小圓點,佈滿"],[3,1,110,"drink","飲,喝;飲料"],
             [3,1,111,"ear","耳朵,聽覺,稻穗"],[3,1,112,"egg","蛋;卵"],[3,1,113,"evening","傍晚,晚上,晚會,末期"],[3,1,114,"face","臉,面對著"],[3,1,115,"fine","美好的,很好,好天氣,罰金"],
-
-            // 三年級下學期
             [3,2,1,"afraid","害怕的"],[3,2,2,"ahead","在前,向前,事先"],[3,2,3,"angry","發怒的,生氣的"],[3,2,4,"anyone","任何人,無論誰"],[3,2,5,"around","到處,四處"],
             [3,2,6,"band","樂團,橡皮圈,帶,細繩"],[3,2,7,"bat","球棒,蝙蝠,球拍,擊球"],[3,2,8,"belt","腰帶;帶"],[3,2,9,"bike","腳踏車"],[3,2,10,"born","出生的,天生的"],
             [3,2,11,"brown","褐色,棕色,咖啡色的"],[3,2,12,"care","看護,照料,關心,在乎"],[3,2,13,"case","事件,實例,事實"],[3,2,14,"cheap","便宜的,價廉的"],[3,2,15,"chess","西洋棋"],
@@ -127,8 +170,6 @@
             [3,2,101,"bus","巴士,公車"],[3,2,102,"cake","蛋糕,糕餅"],[3,2,103,"candy","糖果"],[3,2,104,"car","汽車,火車車廂"],[3,2,105,"catch","接住,趕上,接球,捕捉,理解"],
             [3,2,106,"come","來,到達"],[3,2,107,"cow","牛,母牛,母象,母鯨,恐嚇"],[3,2,108,"dad","爸爸,父親"],[3,2,109,"door","門"],[3,2,110,"down","向下;在下面"],
             [3,2,111,"duck","鴨子"],[3,2,112,"eat","吃;用餐"],[3,2,113,"eight","八"],[3,2,114,"eye","眼睛"],[3,2,115,"farm","農場,飼養場"],
-
-            // 四年級上學期
             [4,1,1,"action","行動;行為"],[4,1,2,"again","再,再一次"],[4,1,3,"answer","答案,回答"],[4,1,4,"art","藝術:美術"],[4,1,5,"bake","烘,烤(麵包),被烘乾,被曬黑"],
             [4,1,6,"base","基礎,來源,基地"],[4,1,7,"before","在...以前,在...之前"],[4,1,8,"boil","煮沸,燒開"],[4,1,9,"boring","無聊的,沒趣的"],[4,1,10,"bottle","瓶子,裝入瓶中"],
             [4,1,11,"business","事情,商業,生意,公事,公司"],[4,1,12,"but","但是,然而,只,僅僅"],[4,1,13,"buy","買,購買,請客"],[4,1,14,"can't","不行,不能"],[4,1,15,"change","改變,交換,換衣服尿布,兌換(錢)"],
@@ -152,8 +193,6 @@
             [4,1,101,"five","五"],[4,1,102,"four","四;四個"],[4,1,103,"frog","蛙,青蛙"],[4,1,104,"go","去,走"],[4,1,105,"goose","鵝,鵝肉,傻瓜"],
             [4,1,106,"hand","手"],[4,1,107,"head","頭"],[4,1,108,"hello","喂,你好"],[4,1,109,"home","家,住家"],[4,1,110,"horse","馬"],
             [4,1,111,"is","是"],[4,1,112,"jump","(雙腳)跳"],[4,1,113,"key","鑰匙;祕訣;答案"],[4,1,114,"koala","無尾熊"],[4,1,115,"many","很多的"],
-
-            // 四年級下學期
             [4,2,1,"after","在...以後,在...後面,模仿,儘管"],[4,2,2,"already","已經;先前"],[4,2,3,"ask","問,要求,請求,索(價)"],[4,2,4,"beef","牛肉,抱怨"],[4,2,5,"blanket","毛毯,毯子,掩蓋"],
             [4,2,6,"bored","無聊的,厭倦的"],[4,2,7,"borrow","借用,借東西"],[4,2,8,"bowl","碗,碗狀物,圓形劇場"],[4,2,9,"butter","奶油,甜言蜜語,塗奶油"],[4,2,10,"call","把...叫做,打電話"],
             [4,2,11,"chant","歌,曲子,詠唱,吟誦"],[4,2,12,"cheese","乳酪"],[4,2,13,"choose","選擇,挑選,決定"],[4,2,14,"circle","圓圈,畫圓圈,旋轉"],[4,2,15,"club","俱樂部,社團,棒打,募集"],
@@ -177,8 +216,6 @@
             [4,2,101,"father","爸爸"],[4,2,102,"fish","魚,魚肉,釣魚"],[4,2,103,"foot","腳,足部;步行"],[4,2,104,"free","免費的,自由的,空著的"],[4,2,105,"girl","女孩,姑娘,女朋友"],
             [4,2,106,"good","好的,好心的"],[4,2,107,"hair","頭髮,毛髮"],[4,2,108,"he","他"],[4,2,109,"heart","心臟;內心;心形的"],[4,2,110,"here","這裡"],
             [4,2,111,"hop","用單腳跳著走,跳上"],[4,2,112,"I","我"],[4,2,113,"juice","果汁"],[4,2,114,"kangaroo","袋鼠"],[4,2,115,"knee","膝蓋,膝部"],
-
-            // 五年級上學期
             [5,1,1,"across","橫越,穿過,在...那邊,寬,各處"],[5,1,2,"actress","女演員"],[5,1,3,"ago","(一段時間)以前"],[5,1,4,"always","總是,經常"],[5,1,5,"American","美國人,美國的"],
             [5,1,6,"another","另外的,另外一個"],[5,1,7,"anything","任何東西,重要事物"],[5,1,8,"appear","出現,看來"],[5,1,9,"August","八月"],[5,1,10,"badminton","羽毛球"],
             [5,1,11,"basket","籃,簍,筐"],[5,1,12,"bathroom","浴室,化妝室,廁所"],[5,1,13,"bear","熊,承受,忍受"],[5,1,14,"become","變成,成為"],[5,1,15,"believe","相信,信任,信仰,猜想"],
@@ -207,8 +244,6 @@
             [5,1,126,"mother","母親;媽媽"],[5,1,127,"mouth","嘴巴"],[5,1,128,"my","我的"],[5,1,129,"night","晚上,夜間的"],[5,1,130,"nose","鼻子"],
             [5,1,131,"one","1"],[5,1,132,"pen","筆,鋼筆,獸欄"],[5,1,133,"pig","豬"],[5,1,134,"pool","水塘,水池,游泳池"],[5,1,135,"rat","老鼠,野鼠"],
             [5,1,136,"see","看見"],[5,1,137,"seven","七"],[5,1,138,"ship","船,艦"],
-
-            // 五年級下學期
             [5,2,1,"actor","男演員;演員"],[5,2,2,"age","年齡,時代,變老"],[5,2,3,"almost","幾乎,差不多"],[5,2,4,"America","美國"],[5,2,5,"animal","動物,動物的"],
             [5,2,6,"April","四月"],[5,2,7,"autumn","秋季,秋天,秋天的"],[5,2,8,"bath","洗澡,浴盆,游泳池"],[5,2,9,"beautiful","美麗的"],[5,2,10,"bedroom","臥室,房間"],
             [5,2,11,"belong","屬於,歸某人所有"],[5,2,12,"blackboard","黑板"],[5,2,13,"bookstore","書店,書局"],[5,2,14,"breakfast","早餐,吃早餐"],[5,2,15,"chance","機會,可能性,碰巧的"],
@@ -237,8 +272,6 @@
             [5,2,126,"mouse","老鼠,滑鼠"],[5,2,127,"much","許多;大量的"],[5,2,128,"neck","頸,脖子"],[5,2,129,"nine","九"],[5,2,130,"now","現在,馬上"],
             [5,2,131,"park","公園:停車"],[5,2,132,"pencil","鉛筆"],[5,2,133,"pizza","肉餡餅;比薩餅"],[5,2,134,"rabbit","兔子"],[5,2,135,"read","讀,念"],
             [5,2,136,"seesaw","蹺蹺板,前後動的"],[5,2,137,"she","她"],
-
-            // 六年級上學期
             [6,1,1,"about","大約在,關於,對於"],[6,1,2,"abroad","在國外,到國外,在外面,散開"],[6,1,3,"airplane","飛機"],[6,1,4,"ant","螞蟻"],[6,1,5,"attack","攻擊"],
             [6,1,6,"back","回來"],[6,1,7,"barbecue","烤肉"],[6,1,8,"basketball","籃球,籃球運動"],[6,1,9,"begin","開始,啟動"],[6,1,10,"below","在下面,在...下面"],
             [6,1,11,"between","在...之間,在兩個之間"],[6,1,12,"birthday","生日"],[6,1,13,"blind","瞎的,盲的"],[6,1,14,"body","身體"],[6,1,15,"bottom","底部,屁股,起因"],
@@ -267,8 +300,6 @@
             [6,1,126,"sister","姐妹,小姑,嫂子"],[6,1,127,"six","六"],[6,1,128,"some","一些"],[6,1,129,"sorry","抱歉,對不起,感到難過的"],[6,1,130,"stand","站立,站著"],
             [6,1,131,"tea","茶"],[6,1,132,"ten","十"],[6,1,133,"that","那個,那人"],[6,1,134,"this","這,這個"],[6,1,135,"train","火車,訓練"],
             [6,1,136,"two","二;兩個"],[6,1,137,"wall","牆,壁;圍牆;"],[6,1,138,"we","我們"],[6,1,139,"you","你,你們"],[6,1,140,"zero","零,零號,沒有"],
-
-            // 六年級下學期
             [6,2,1,"able","有才能的,能夠"],[6,2,2,"above","在...之上"],[6,2,3,"air","空氣,天空,晾乾"],[6,2,4,"alright","極好的,沒問題的"],[6,2,5,"apartment","公寓,套房"],
             [6,2,6,"arrive","到達,達成,嬰兒出生"],[6,2,7,"away","離開"],[6,2,8,"backache","背痛,腰痛"],[6,2,9,"balcony","陽台,劇院2樓座位"],[6,2,10,"baseball","棒球運動"],
             [6,2,11,"beach","海灘"],[6,2,12,"because","因為"],[6,2,13,"behind","在……的後面,屁股"],[6,2,14,"beside","在旁邊,與…相比"],[6,2,15,"bicycle","腳踏車"],
@@ -344,16 +375,36 @@
             const [currentMode, setCurrentMode] = useState('home'); 
             const [hasActivePlan, setHasActivePlan] = useState(false);
             const [db, setDb] = useState([]);
+            
+            // --- 收藏與錯題狀態 ---
+            const [favorites, setFavorites] = useState(() => JSON.parse(localStorage.getItem('vocab_favorites') || '[]'));
+            const [mistakes, setMistakes] = useState(() => JSON.parse(localStorage.getItem('vocab_mistakes') || '[]'));
 
             useEffect(() => {
                 const importedData = localStorage.getItem('vocab_imported_data');
-                // 簡單檢查是否有資料，若無資料則初始化
                 const raw = importedData ? JSON.parse(importedData) : processData(DEFAULT_RAW_DATA);
                 setDb(raw);
-
                 const savedPlan = localStorage.getItem('smart_plan_config');
                 setHasActivePlan(!!savedPlan);
             }, []);
+
+            // --- 切換收藏狀態 ---
+            const toggleFavorite = (id) => {
+                const newFavs = favorites.includes(id) 
+                    ? favorites.filter(fid => fid !== id) 
+                    : [...favorites, id];
+                setFavorites(newFavs);
+                localStorage.setItem('vocab_favorites', JSON.stringify(newFavs));
+            };
+
+            // --- 加入錯題本 ---
+            const addMistake = (id) => {
+                if (!mistakes.includes(id)) {
+                    const newMistakes = [...mistakes, id];
+                    setMistakes(newMistakes);
+                    localStorage.setItem('vocab_mistakes', JSON.stringify(newMistakes));
+                }
+            };
 
             const handleImport = (jsonData) => {
                 try {
@@ -378,10 +429,14 @@
             };
 
             const handleResetData = () => {
-                if(confirm("確定恢復原廠設定？自定義匯入將被清除。")) {
+                if(confirm("確定恢復原廠設定？\n(收藏與錯題紀錄也會被清除)")) {
                     localStorage.removeItem('vocab_imported_data');
-                    setDb(processData(DEFAULT_RAW_DATA));
                     localStorage.removeItem('smart_plan_config');
+                    localStorage.removeItem('vocab_favorites'); 
+                    localStorage.removeItem('vocab_mistakes'); 
+                    setDb(processData(DEFAULT_RAW_DATA));
+                    setFavorites([]);
+                    setMistakes([]);
                     setHasActivePlan(false);
                     alert("已恢復預設值。");
                 }
@@ -390,7 +445,14 @@
             const renderContent = () => {
                 switch(currentMode) {
                     case 'explore':
-                        return <ExplorationMode db={db} onBack={() => setCurrentMode('home')} />;
+                        return <ExplorationMode 
+                            db={db} 
+                            favorites={favorites} 
+                            mistakes={mistakes}
+                            onToggleFavorite={toggleFavorite}
+                            onAddMistake={addMistake}
+                            onBack={() => setCurrentMode('home')} 
+                        />;
                     case 'smart_dashboard':
                         return <SmartLearningMode db={db} onBack={() => setCurrentMode('home')} onReset={() => setHasActivePlan(false)} />;
                     case 'smart_setup':
@@ -414,13 +476,12 @@
         }
 
         // ==========================================
-        // 3. 首頁 (放大版)
+        // 3. 首頁 (手機版排版修復)
         // ==========================================
         function HomePage({ onSelectExplore, onSelectSmart, hasActivePlan, onImport, onResetData }) {
             const fileInputRef = useRef(null);
 
             const onFileChange = (e) => {
-                /* ... (保留原本邏輯) ... */
                 const file = e.target.files[0];
                 if (!file) return;
                 const reader = new FileReader();
@@ -436,76 +497,87 @@
             };
 
             return (
-                <div className="p-6 flex flex-col items-center justify-center min-h-screen relative max-w-7xl mx-auto">
-                    <div className="absolute top-6 right-6 flex gap-3">
-                        <button onClick={() => fileInputRef.current.click()} className="text-base bg-white/60 px-6 py-3 rounded-2xl shadow-sm text-slate-500 hover:text-indigo-600 font-bold transition-colors btn-bounce">
+                <div className="p-4 md:p-6 min-h-screen flex flex-col items-center relative max-w-7xl mx-auto">
+                    
+                    {/* Header: 手機版流動排列 (避免擋字)，電腦版絕對定位 (右上角) */}
+                    <div className="w-full flex justify-end gap-3 mb-4 md:absolute md:top-6 md:right-6 md:mb-0 z-20">
+                        <button onClick={() => fileInputRef.current.click()} className="text-sm md:text-base bg-white/60 px-4 py-2 md:px-6 md:py-3 rounded-2xl shadow-sm text-slate-500 hover:text-indigo-600 font-bold transition-colors btn-bounce">
                             <i className="fa-solid fa-file-import mr-2"></i>匯入
                         </button>
-                        <button onClick={onResetData} className="text-base bg-white/60 px-6 py-3 rounded-2xl shadow-sm text-slate-500 hover:text-red-500 font-bold transition-colors btn-bounce">
+                        <button onClick={onResetData} className="text-sm md:text-base bg-white/60 px-4 py-2 md:px-6 md:py-3 rounded-2xl shadow-sm text-slate-500 hover:text-red-500 font-bold transition-colors btn-bounce">
                             <i className="fa-solid fa-rotate-left mr-2"></i>重置
                         </button>
                         <input type="file" ref={fileInputRef} onChange={onFileChange} accept=".json" className="hidden" />
                     </div>
 
-                    <div className="text-center mb-16">
-                        <h1 className="text-6xl md:text-8xl font-bold mb-6 text-sky-600 tracking-tight drop-shadow-sm leading-tight">
-                            國小英語<br/><span className="text-5xl md:text-7xl text-sky-400">全方位學習系統</span>
-                        </h1>
-                        <p className="text-slate-500 text-2xl md:text-3xl font-medium">讓學習變得像玩遊戲一樣有趣！</p>
-                    </div>
+                    {/* Main Content */}
+                    <div className="flex-1 flex flex-col items-center justify-center w-full">
+                        <div className="text-center mb-10 md:mb-16">
+                            <h1 className="text-5xl md:text-8xl font-bold mb-6 text-sky-600 tracking-tight drop-shadow-sm leading-tight">
+                                國小英語<br/><span className="text-4xl md:text-7xl text-sky-400">全方位學習系統</span>
+                            </h1>
+                            <p className="text-slate-500 text-xl md:text-3xl font-medium">讓學習變得像玩遊戲一樣有趣！</p>
+                        </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10 w-full max-w-5xl">
-                        <button onClick={onSelectExplore} className="btn-bounce glass-panel p-10 md:p-14 rounded-[3rem] hover:shadow-2xl transition-all flex flex-col items-center text-center gap-6 group border-t-[12px] border-sky-400 h-full">
-                            <div className="w-32 h-32 md:w-40 md:h-40 bg-sky-100 rounded-full flex items-center justify-center text-6xl md:text-7xl text-sky-500 group-hover:scale-110 transition-transform shadow-inner">
-                                <i className="fa-solid fa-compass"></i>
-                            </div>
-                            <div>
-                                <h3 className="text-3xl md:text-4xl font-bold text-slate-700 mb-3">自由探索模式</h3>
-                                <p className="text-lg md:text-xl text-slate-500">自選年級與類別，<br/>列表、卡片、測驗隨你選</p>
-                            </div>
-                        </button>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 w-full max-w-5xl">
+                            <button onClick={onSelectExplore} className="btn-bounce glass-panel p-8 md:p-14 rounded-[2.5rem] md:rounded-[3rem] hover:shadow-2xl transition-all flex flex-col items-center text-center gap-6 group border-t-[12px] border-sky-400 h-full">
+                                <div className="w-24 h-24 md:w-40 md:h-40 bg-sky-100 rounded-full flex items-center justify-center text-5xl md:text-7xl text-sky-500 group-hover:scale-110 transition-transform shadow-inner">
+                                    <i className="fa-solid fa-compass"></i>
+                                </div>
+                                <div>
+                                    <h3 className="text-2xl md:text-4xl font-bold text-slate-700 mb-3">自由探索模式</h3>
+                                    <p className="text-base md:text-xl text-slate-500">自選年級與類別，<br/>列表、卡片、測驗隨你選</p>
+                                </div>
+                            </button>
 
-                        <button onClick={onSelectSmart} className="btn-bounce glass-panel p-10 md:p-14 rounded-[3rem] hover:shadow-2xl transition-all flex flex-col items-center text-center gap-6 group border-t-[12px] border-indigo-400 h-full">
-                            <div className="w-32 h-32 md:w-40 md:h-40 bg-indigo-100 rounded-full flex items-center justify-center text-6xl md:text-7xl text-indigo-500 group-hover:scale-110 transition-transform shadow-inner">
-                                <i className="fa-solid fa-brain"></i>
-                            </div>
-                            <div>
-                                <h3 className="text-3xl md:text-4xl font-bold text-slate-700 mb-3">智能衝刺計畫</h3>
-                                <p className="text-lg md:text-xl text-slate-500">艾賓豪斯記憶曲線排程，<br/>科學化背單字</p>
-                                {hasActivePlan ? (
-                                    <span className="inline-block mt-4 text-base bg-emerald-100 text-emerald-700 px-4 py-2 rounded-full font-bold animate-pulse">
-                                        <i className="fa-solid fa-play mr-2"></i> 學習進行中
-                                    </span>
-                                ) : (
-                                    <span className="inline-block mt-4 text-base bg-slate-100 text-slate-500 px-4 py-2 rounded-full font-bold">建立新計畫</span>
-                                )}
-                            </div>
-                        </button>
+                            <button onClick={onSelectSmart} className="btn-bounce glass-panel p-8 md:p-14 rounded-[2.5rem] md:rounded-[3rem] hover:shadow-2xl transition-all flex flex-col items-center text-center gap-6 group border-t-[12px] border-indigo-400 h-full">
+                                <div className="w-24 h-24 md:w-40 md:h-40 bg-indigo-100 rounded-full flex items-center justify-center text-5xl md:text-7xl text-indigo-500 group-hover:scale-110 transition-transform shadow-inner">
+                                    <i className="fa-solid fa-brain"></i>
+                                </div>
+                                <div>
+                                    <h3 className="text-2xl md:text-4xl font-bold text-slate-700 mb-3">智能衝刺計畫</h3>
+                                    <p className="text-base md:text-xl text-slate-500">艾賓豪斯記憶曲線排程，<br/>科學化背單字</p>
+                                    {hasActivePlan ? (
+                                        <span className="inline-block mt-4 text-sm md:text-base bg-emerald-100 text-emerald-700 px-4 py-2 rounded-full font-bold animate-pulse">
+                                            <i className="fa-solid fa-play mr-2"></i> 學習進行中
+                                        </span>
+                                    ) : (
+                                        <span className="inline-block mt-4 text-sm md:text-base bg-slate-100 text-slate-500 px-4 py-2 rounded-full font-bold">建立新計畫</span>
+                                    )}
+                                </div>
+                            </button>
+                        </div>
                     </div>
                 </div>
             );
         }
-// ==========================================
+
         // ==========================================
-        // 4. 模式 A: 自由探索 (全視窗放大版)
+        // 4. 探索模式 (大字體 + 收藏 + 拼字)
         // ==========================================
-        function ExplorationMode({ db, onBack }) {
-            /* ... (保留原本 hooks 邏輯) ... */
-            const categories = useMemo(() => [...new Set(db.map(i => i.category))], [db]);
-            const [selectedCategory, setSelectedCategory] = useState(categories[0] || "");
+        function ExplorationMode({ db, favorites, mistakes, onToggleFavorite, onAddMistake, onBack }) {
+            // 建構類別列表，加入特殊類別
+            const categories = useMemo(() => {
+                const rawCats = [...new Set(db.map(i => i.category))];
+                return ["⭐ 我的收藏", "💪 常錯單字", ...rawCats];
+            }, [db]);
+
+            const [selectedCategory, setSelectedCategory] = useState(categories[2] || ""); 
             const [mode, setMode] = useState('list');
             const [filteredData, setFilteredData] = useState([]);
 
+            // 資料過濾邏輯
             useEffect(() => {
-                if (categories.length > 0 && !categories.includes(selectedCategory)) {
-                    setSelectedCategory(categories[0]);
+                let data = [];
+                if (selectedCategory === "⭐ 我的收藏") {
+                    data = db.filter(item => favorites.includes(item.id));
+                } else if (selectedCategory === "💪 常錯單字") {
+                    data = db.filter(item => mistakes.includes(item.id));
+                } else {
+                    data = db.filter(item => item.category === selectedCategory);
                 }
-            }, [categories]);
-
-            useEffect(() => {
-                const data = db.filter(item => item.category === selectedCategory);
                 setFilteredData(data);
-            }, [selectedCategory, db]);
+            }, [selectedCategory, db, favorites, mistakes]);
 
             const speak = (text) => {
                 const u = new SpeechSynthesisUtterance(text);
@@ -514,9 +586,9 @@
             };
 
             return (
-                <div className="min-h-screen p-4 md:p-8 max-w-[1800px] mx-auto flex flex-col md:flex-row gap-8 items-start">
+                <div className="min-h-screen p-4 md:p-8 max-w-[1800px] mx-auto flex flex-col md:flex-row gap-6 md:gap-8 items-start">
                     
-                    {/* 左側選單：加寬至 w-96 */}
+                    {/* 左側選單 */}
                     <div className="w-full md:w-96 shrink-0 md:sticky md:top-8 z-10">
                         <div className="glass-panel p-6 md:p-8 rounded-[2.5rem] soft-shadow flex flex-col gap-6">
                             <div className="flex items-center gap-4 mb-2">
@@ -527,7 +599,7 @@
                             </div>
 
                             <div>
-                                <label className="text-sm font-bold text-slate-400 uppercase tracking-wider ml-1 mb-3 block">類別</label>
+                                <label className="text-sm font-bold text-slate-400 uppercase tracking-wider ml-1 mb-3 block">類別選擇</label>
                                 <div className="relative w-full">
                                     <select 
                                         value={selectedCategory} 
@@ -541,12 +613,13 @@
                             </div>
 
                             <div>
-                                <label className="text-sm font-bold text-slate-400 uppercase tracking-wider ml-1 mb-3 block">模式</label>
-                                <div className="grid grid-cols-3 md:grid-cols-1 gap-3">
+                                <label className="text-sm font-bold text-slate-400 uppercase tracking-wider ml-1 mb-3 block">學習模式</label>
+                                <div className="grid grid-cols-2 md:grid-cols-1 gap-3">
                                     {[
                                         {id: 'list', icon: 'fa-list', label: '列表'},
                                         {id: 'flashcard', icon: 'fa-layer-group', label: '卡片'},
-                                        {id: 'quiz', icon: 'fa-graduation-cap', label: '測驗'}
+                                        {id: 'quiz', icon: 'fa-graduation-cap', label: '測驗'},
+                                        {id: 'spelling', icon: 'fa-keyboard', label: '拼字'} 
                                     ].map(m => (
                                         <button key={m.id} onClick={() => setMode(m.id)} 
                                             className={`py-4 px-3 rounded-2xl font-bold transition-all flex flex-col md:flex-row items-center md:gap-5 justify-center md:justify-start ${mode === m.id ? 'bg-sky-500 text-white shadow-lg shadow-sky-200' : 'bg-white text-slate-500 hover:bg-slate-50'}`}>
@@ -567,16 +640,22 @@
                     <div className="flex-1 w-full min-w-0">
                         {filteredData.length === 0 ? (
                             <div className="h-[60vh] flex flex-col items-center justify-center text-slate-400">
-                                <div className="text-7xl mb-6 opacity-50">📂</div>
-                                <p className="text-2xl font-bold">此類別無資料</p>
+                                <div className="text-7xl mb-6 opacity-50">
+                                    {selectedCategory.includes('收藏') ? '⭐' : '📂'}
+                                </div>
+                                <p className="text-2xl font-bold">
+                                    {selectedCategory.includes('收藏') ? '還沒有收藏單字喔！' : '此類別無資料'}
+                                </p>
+                                {selectedCategory.includes('收藏') && <p className="mt-2 text-slate-400">在卡片或列表中點擊星星即可收藏</p>}
                             </div>
                         ) : (
                             <div className="animate-fade-in w-full">
-                                {mode === 'list' && <ListView data={filteredData} speak={speak} />}
+                                {mode === 'list' && <ListView data={filteredData} speak={speak} favorites={favorites} onToggleFavorite={onToggleFavorite} />}
                                 {mode !== 'list' && (
                                     <div className="flex flex-col items-center justify-start md:pt-12 pb-12 min-h-[60vh]">
-                                        {mode === 'flashcard' && <FlashcardSession data={filteredData} speak={speak} />}
-                                        {mode === 'quiz' && <QuizSession data={filteredData} speak={speak} />}
+                                        {mode === 'flashcard' && <FlashcardSession data={filteredData} speak={speak} favorites={favorites} onToggleFavorite={onToggleFavorite} />}
+                                        {mode === 'quiz' && <QuizSession data={filteredData} speak={speak} onAddMistake={onAddMistake} />}
+                                        {mode === 'spelling' && <SpellingSession data={filteredData} speak={speak} onAddMistake={onAddMistake} />}
                                     </div>
                                 )}
                             </div>
@@ -585,42 +664,161 @@
                 </div>
             );
         }
-// --- 列表視圖 (放大版) ---
-        function ListView({ data, speak }) {
+
+        // --- 全新功能：拼字練習模式 ---
+        function SpellingSession({ data, speak, onAddMistake }) {
+            const [qIdx, setQIdx] = useState(0);
+            const [input, setInput] = useState('');
+            const [feedback, setFeedback] = useState(null); 
+            const [hintLevel, setHintLevel] = useState(0);
+            const [isFinished, setIsFinished] = useState(false);
+            const inputRef = useRef(null);
+
+            const item = data[qIdx];
+
+            useEffect(() => {
+                setInput('');
+                setFeedback(null);
+                setHintLevel(0);
+                if(inputRef.current) inputRef.current.focus();
+            }, [qIdx]);
+
+            const checkAnswer = (e) => {
+                e?.preventDefault();
+                if (feedback === 'correct') return;
+
+                if (input.trim().toLowerCase() === item.word.toLowerCase()) {
+                    setFeedback('correct');
+                    speak(item.word);
+                    speak("Correct!");
+                    confetti({ particleCount: 40, spread: 60, origin: { y: 0.7 } });
+                    setTimeout(() => {
+                        if (qIdx < data.length - 1) setQIdx(prev => prev + 1);
+                        else setIsFinished(true);
+                    }, 1500);
+                } else {
+                    setFeedback('wrong');
+                    speak("Try again");
+                    onAddMistake(item.id); 
+                    setTimeout(() => setFeedback(null), 1000);
+                }
+            };
+
+            const showHint = () => {
+                setHintLevel(prev => prev + 1);
+                inputRef.current.focus();
+            };
+
+            const getHintText = () => {
+                if (hintLevel === 0) return "";
+                const word = item.word;
+                let hint = "";
+                for (let i = 0; i < word.length; i++) {
+                    if (i < hintLevel) hint += word[i];
+                    else hint += " _ ";
+                }
+                return hint;
+            };
+
+            if (isFinished) return (
+                <div className="glass-panel p-16 rounded-[3rem] text-center soft-shadow w-full max-w-2xl mx-auto">
+                    <div className="text-8xl mb-8">🎉</div>
+                    <h2 className="text-4xl font-bold text-slate-800 mb-4">拼字挑戰完成！</h2>
+                    <button onClick={()=>{setQIdx(0);setIsFinished(false)}} className="px-10 py-4 bg-sky-500 text-white rounded-2xl font-bold text-xl hover:bg-sky-600 transition-colors shadow-lg btn-bounce">
+                        再玩一次
+                    </button>
+                </div>
+            );
+
             return (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6 pb-12">
-                    {data.map((item, idx) => (
-                        <div key={idx} className="glass-panel p-8 rounded-[2rem] flex items-center justify-between hover:bg-white transition-colors group border-l-[12px] border-l-transparent hover:border-l-sky-400 shadow-sm hover:shadow-xl">
-                            <div className="min-w-0 flex-1 pr-6">
-                                <div className="text-4xl md:text-5xl font-bold text-sky-600 english-font mb-3 truncate">{item.word}</div>
-                                <div className="text-2xl md:text-3xl text-slate-600 font-medium truncate mb-2">{item.meaning}</div>
-                                {item.sentence && (
-                                    <div className="text-slate-400 text-lg md:text-xl mt-2 line-clamp-2 italic">
-                                        "{item.sentence}"
-                                    </div>
-                                )}
-                            </div>
-                            <button onClick={() => speak(item.word)} className="w-16 h-16 rounded-full bg-sky-50 text-sky-500 flex items-center justify-center shrink-0 hover:bg-sky-500 hover:text-white transition-all btn-bounce shadow-md">
-                                <i className="fa-solid fa-volume-high text-2xl"></i>
+                <div className="w-full max-w-2xl mx-auto">
+                    <div className="glass-panel p-10 md:p-14 rounded-[3rem] shadow-xl text-center relative bg-white/90">
+                        <div className="mb-8">
+                            {item.image && <img src={`./images/${item.image}`} className="h-24 mx-auto mb-4 object-contain"/>}
+                            <h2 className="text-5xl md:text-6xl font-bold text-slate-700 mb-4">{item.meaning}</h2>
+                            <div className="h-8 text-xl font-bold text-sky-400 tracking-widest min-h-[2rem]">{getHintText()}</div>
+                        </div>
+
+                        <form onSubmit={checkAnswer} className="relative w-full max-w-lg mx-auto">
+                            <input 
+                                ref={inputRef}
+                                type="text" 
+                                value={input}
+                                onChange={e => setInput(e.target.value)}
+                                className={`w-full bg-slate-50 border-4 ${feedback==='wrong'?'border-rose-400 bg-rose-50':'border-slate-200 focus:border-sky-400'} rounded-2xl px-6 py-4 text-center text-4xl md:text-5xl font-bold text-slate-800 english-font outline-none transition-all`}
+                                placeholder="Type here..."
+                                autoFocus
+                                autoComplete="off"
+                            />
+                            {feedback === 'correct' && (
+                                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-500 text-4xl animate-bounce">
+                                    <i className="fa-solid fa-check-circle"></i>
+                                </div>
+                            )}
+                        </form>
+
+                        <div className="flex gap-4 mt-8 justify-center">
+                            <button onClick={showHint} type="button" className="px-6 py-4 bg-amber-100 text-amber-600 rounded-2xl font-bold text-lg hover:bg-amber-200 transition-colors btn-bounce">
+                                <i className="fa-solid fa-lightbulb mr-2"></i>提示
+                            </button>
+                            <button onClick={() => speak(item.word)} type="button" className="px-6 py-4 bg-sky-100 text-sky-600 rounded-2xl font-bold text-lg hover:bg-sky-200 transition-colors btn-bounce">
+                                <i className="fa-solid fa-volume-high mr-2"></i>聽發音
+                            </button>
+                            <button onClick={checkAnswer} className="px-8 py-4 bg-sky-500 text-white rounded-2xl font-bold text-lg hover:bg-sky-600 shadow-lg shadow-sky-200 transition-colors btn-bounce">
+                                送出
                             </button>
                         </div>
-                    ))}
+                    </div>
                 </div>
             );
         }
 
-        // --- 卡片視圖 (放大版) ---
-        function FlashcardSession({ data, speak }) {
+        // --- 列表視圖 (加入收藏星星) ---
+        function ListView({ data, speak, favorites, onToggleFavorite }) {
+            return (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6 pb-12">
+                    {data.map((item, idx) => {
+                        const isFav = favorites.includes(item.id);
+                        return (
+                            <div key={idx} className="glass-panel p-8 rounded-[2rem] flex items-center justify-between hover:bg-white transition-colors group border-l-[12px] border-l-transparent hover:border-l-sky-400 shadow-sm hover:shadow-xl relative">
+                                <div className="min-w-0 flex-1 pr-6">
+                                    <div className="text-4xl md:text-5xl font-bold text-sky-600 english-font mb-3 truncate">{item.word}</div>
+                                    <div className="text-2xl md:text-3xl text-slate-600 font-medium truncate mb-2">{item.meaning}</div>
+                                    {item.sentence && (
+                                        <div className="text-slate-400 text-lg md:text-xl mt-2 line-clamp-2 italic">"{item.sentence}"</div>
+                                    )}
+                                </div>
+                                <div className="flex flex-col gap-3 shrink-0">
+                                    <button onClick={() => speak(item.word)} className="w-14 h-14 rounded-full bg-sky-50 text-sky-500 flex items-center justify-center hover:bg-sky-500 hover:text-white transition-all btn-bounce shadow-md">
+                                        <i className="fa-solid fa-volume-high text-xl"></i>
+                                    </button>
+                                    <button onClick={() => onToggleFavorite(item.id)} className={`w-14 h-14 rounded-full flex items-center justify-center transition-all btn-bounce shadow-md ${isFav ? 'bg-amber-100 text-amber-500' : 'bg-slate-100 text-slate-300 hover:text-amber-400'}`}>
+                                        <i className={`fa-star text-xl ${isFav ? 'fa-solid' : 'fa-regular'}`}></i>
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            );
+        }
+
+        // --- 卡片視圖 (放大版 + 收藏) ---
+        function FlashcardSession({ data, speak, favorites, onToggleFavorite }) {
             const [idx, setIdx] = useState(0);
             const [flipped, setFlipped] = useState(false);
             const item = data[idx];
+            const isFav = favorites.includes(item.id);
 
             return (
                 <div className="w-full max-w-2xl mx-auto">
                     <div className={`relative w-full aspect-[3/4] md:aspect-[4/3] cursor-pointer card-perspective ${flipped ? 'flipped' : ''}`} onClick={() => setFlipped(!flipped)}>
                         <div className="card-inner card-shadow rounded-[3rem] bg-white">
                             {/* 正面 */}
-                            <div className="card-front flex flex-col items-center justify-center p-10 border border-white bg-gradient-to-br from-white to-sky-50">
+                            <div className="card-front flex flex-col items-center justify-center p-10 border border-white bg-gradient-to-br from-white to-sky-50 relative">
+                                <button onClick={(e)=>{e.stopPropagation(); onToggleFavorite(item.id)}} className={`absolute top-8 right-8 w-14 h-14 rounded-full flex items-center justify-center transition-all shadow-md z-30 ${isFav ? 'bg-amber-100 text-amber-500' : 'bg-white text-slate-300 hover:text-amber-400'}`}>
+                                     <i className={`fa-star text-2xl ${isFav ? 'fa-solid' : 'fa-regular'}`}></i>
+                                </button>
                                 <div className="absolute top-8 left-8 px-4 py-2 bg-sky-100 text-sky-600 rounded-xl text-lg font-bold">
                                     {idx + 1} / {data.length}
                                 </div>
@@ -649,7 +847,6 @@
                         </div>
                     </div>
                     
-                    {/* 控制按鈕 */}
                     <div className="flex items-center justify-center gap-12 mt-12">
                         <button onClick={()=>{setFlipped(false); setIdx(prev=>(prev-1+data.length)%data.length)}} className="w-20 h-20 rounded-full bg-white text-slate-400 hover:text-sky-600 hover:bg-sky-50 shadow-lg flex items-center justify-center transition-all btn-bounce text-3xl">
                             <i className="fa-solid fa-arrow-left"></i>
@@ -662,7 +859,8 @@
             );
         }
 
-        function QuizSession({ data, speak }) {
+        // --- 測驗視圖 (加入錯題紀錄) ---
+        function QuizSession({ data, speak, onAddMistake }) {
             const [qIdx, setQIdx] = useState(0);
             const [score, setScore] = useState(0);
             const [showResult, setShowResult] = useState(false);
@@ -689,6 +887,7 @@
                     confetti({ particleCount: 30, spread: 50, origin: { y: 0.8 } });
                 } else {
                     speak("Try again");
+                    onAddMistake(data[qIdx].id); 
                 }
                 setTimeout(() => {
                     setFeedback(null);
@@ -732,7 +931,7 @@
         }
 
         // ==========================================
-        // 5. 智能衝刺計畫設定 (放大優化版)
+        // 5. 智能衝刺計畫設定
         // ==========================================
         function SmartPlanSetup({ db, onBack, onCreated }) {
             const categories = useMemo(() => [...new Set(db.map(i => i.category))], [db]);
@@ -815,7 +1014,7 @@
         }
 
         // ==========================================
-        // 6. 智能學習儀表板 (放大優化版)
+        // 6. 智能學習儀表板
         // ==========================================
         function SmartLearningMode({ db, onBack, onReset }) {
             const [config, setConfig] = useState(null);
@@ -868,7 +1067,6 @@
             const now = Date.now();
             const toReview = activeDB.filter(w => progress[w.id] && progress[w.id].nextReview <= now);
             
-            // SVG 參數放大
             const radius = 120;
             const stroke = 24;
             const normalizedRadius = radius - stroke * 2;
@@ -886,7 +1084,6 @@
                         </div>
 
                         <div className="flex flex-col md:flex-row items-center justify-between gap-16 mb-12 mt-8">
-                            {/* 巨型進度環 */}
                             <div className="relative w-72 h-72 md:w-80 md:h-80 shrink-0">
                                 <svg height={radius * 2 + 40} width={radius * 2 + 40} className="transform -rotate-90 drop-shadow-xl overflow-visible w-full h-full">
                                     <circle stroke="#f1f5f9" strokeWidth={stroke} fill="transparent" r={normalizedRadius} cx="50%" cy="50%" />
@@ -908,7 +1105,6 @@
                                 </div>
                             </div>
 
-                            {/* 數據與按鈕 */}
                             <div className="flex-1 w-full grid grid-cols-2 gap-6 text-center">
                                 <div className="bg-white/60 p-6 rounded-[2rem] border border-slate-100">
                                     <div className="text-4xl md:text-5xl font-bold text-slate-700 mb-2">{learnedCount}</div>
@@ -936,7 +1132,7 @@
         }
 
         // ==========================================
-        // 7. 智能學習 Session (巨型卡片優化版)
+        // 7. 智能學習 Session
         // ==========================================
         function SmartSession({ mode, db, progress, config, onResult, onExit }) {
             const [list, setList] = useState([]);
@@ -994,10 +1190,7 @@
             if (!item) return null;
 
             return (
-                /* 採用全螢幕 Flex 佈局：手機垂直(flex-col)，電腦左右(flex-row) */
                 <div className="min-h-screen flex flex-col md:flex-row bg-slate-50">
-                    
-                    {/* 左側資訊欄 (電腦版變寬) */}
                     <div className="p-6 md:p-10 flex md:flex-col md:w-80 md:border-r md:border-slate-200 md:bg-white justify-between items-center md:items-start shrink-0 z-20 shadow-sm md:shadow-none bg-white/80 backdrop-blur-md sticky top-0 md:relative">
                         <button onClick={onExit} className="w-12 h-12 flex items-center justify-center rounded-full bg-slate-100 text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors">
                             <i className="fa-solid fa-xmark text-2xl"></i>
@@ -1011,7 +1204,6 @@
                             <div className="text-slate-400 font-bold text-sm md:mt-2">進度: <span className="text-slate-800 text-xl">{idx+1}</span> / {list.length}</div>
                         </div>
 
-                        {/* 電腦版下方的裝飾或留白 */}
                         <div className="hidden md:block w-full">
                             <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
                                 <div className="h-full bg-slate-800 transition-all duration-300" style={{width: `${((idx+1)/list.length)*100}%`}}></div>
@@ -1019,15 +1211,10 @@
                         </div>
                     </div>
                     
-                    {/* 右側主要卡片區 */}
                     <div className="flex-1 flex flex-col items-center justify-start md:justify-center p-6 md:p-12 overflow-y-auto">
-                        
-                        {/* 巨型卡片容器 */}
                         <div className="w-full max-w-3xl mx-auto">
                             <div className={`relative w-full aspect-[3/4] md:aspect-[4/3] cursor-pointer card-perspective ${flipped ? 'flipped' : ''}`} onClick={() => setFlipped(!flipped)}>
                                 <div className="card-inner card-shadow rounded-[3rem] bg-white">
-                                    
-                                    {/* 正面 (Front) */}
                                     <div className="card-front flex flex-col items-center justify-center p-10 md:p-16 border-b-[12px] border-violet-200 bg-white">
                                         <span className="absolute top-8 left-8 bg-violet-50 text-violet-600 text-sm md:text-base px-4 py-2 rounded-xl font-bold tracking-wider">{item.category}</span>
                                         <h2 className="text-7xl md:text-9xl font-bold text-slate-800 english-font mb-10 text-center break-words max-w-full leading-tight">
@@ -1039,7 +1226,6 @@
                                         <p className="absolute bottom-8 text-slate-300 text-sm font-bold uppercase animate-pulse tracking-widest">點擊翻轉查看解釋</p>
                                     </div>
                                     
-                                    {/* 背面 (Back) - 修復與放大 */}
                                     <div className="card-back flex flex-col items-center justify-center p-10 md:p-16 border-b-[12px] border-emerald-300 bg-white text-center">
                                         {item.image && (
                                             <div className="h-32 mb-6">
@@ -1056,7 +1242,6 @@
                                 </div>
                             </div>
 
-                            {/* 底部操作按鈕 (巨大化) */}
                             <div className="w-full mt-10 md:mt-16 max-w-2xl mx-auto">
                                 {!flipped ? (
                                     <button onClick={()=>setFlipped(true)} className="btn-bounce w-full py-6 bg-violet-600 text-white rounded-[2rem] font-bold text-2xl shadow-xl shadow-violet-200 hover:bg-violet-700 transition-colors">
